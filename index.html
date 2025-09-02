@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Game Mario Demo - Overlay</title>
+<style>
+body { font-family: Arial, sans-serif; text-align: center; background-color: #f0f0f0; margin: 0; padding: 50px; }
+#video-container { position: relative; display: inline-block; }
+#marioVideo { width: 640px; height: 360px; }
+#overlay { position: absolute; top: 10px; left: 10px; right: 10px; color: white; background-color: rgba(0,0,0,0.5); padding: 10px; border-radius: 10px; text-align: center; }
+#object-card { font-size: 2rem; margin: 10px 0; }
+#status { margin-top: 10px; font-size: 1.2rem; color: #fff; }
+button { margin: 10px 5px; padding: 10px 20px; font-size: 1rem; border: none; border-radius: 8px; background-color: #007bff; color: white; cursor: pointer; }
+button:hover { background-color: #0056b3; }
+#progress-container { width: 100%; height: 20px; background: #333; border-radius: 10px; margin-top: 10px; }
+#progress-bar { width: 0%; height: 100%; background-color: #4caf50; border-radius: 10px; transition: width 0.3s; }
+#scoreboard { font-size: 1.5rem; margin-top: 10px; }
+</style>
+</head>
+<body>
+<h1>Voice Game Demo - Mario Speedrun</h1>
+<div>
+<button onclick="setMode(true)">Strict Mode</button>
+<button onclick="setMode(false)">Not So Strict Mode</button>
+</div>
+<div id="video-container">
+<video id="marioVideo" preload="auto" playbackRate="2.0">
+<source src="speedrun.mp4" type="video/mp4">
+Your browser does not support the video tag.
+</video>
+<div id="overlay">
+<div id="object-card">Apple</div>
+<div id="status">Choose a mode to start</div>
+<div id="scoreboard">Score: 0</div>
+<div id="progress-container">
+<div id="progress-bar"></div>
+</div>
+<div>
+<button onclick="skipObject()">Skip</button>
+</div>
+</div>
+</div>
+<script>
+const objects = ['Apple','Book','Clock','Pencil','Chair','Cup','Phone','Bag','Lamp','Key','Table','Shoe','Bottle','Notebook','Cap','Glasses','Watch','Wallet','Paper','Door'];
+const objectAlternatives = {
+  'cap': ['cap','hat','hot','tap'],
+  'pencil': ['pencil','pen','pin','pan']
+};
+
+let randomizedObjects = shuffleArray(objects.slice());
+let currentIndex = 0;
+let skipped = [];
+let score = 0;
+let multiplier = 1;
+let strictMode = true;
+let recognition;
+let startTime;
+let currentSegment = 0;
+
+const video = document.getElementById('marioVideo');
+const segments = Array.from({length:40}, (_,i)=>({start: i* (video.duration/40), end: (i+1)*(video.duration/40)}));
+video.addEventListener('loadedmetadata', ()=>{
+  for(let i=0;i<segments.length;i++){
+    segments[i].start = i*(video.duration/40);
+    segments[i].end = (i+1)*(video.duration/40);
+  }
+});
+
+function shuffleArray(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+
+function setMode(strict){
+  strictMode = strict;
+  document.getElementById('status').textContent = `Mode set to ${strict ? 'Strict' : 'Not So Strict'}! Speak the word...`;
+  currentIndex = 0;
+  randomizedObjects = shuffleArray(objects.slice());
+  skipped = [];
+  score = 0;
+  multiplier = 1;
+  currentSegment = 0;
+  startTime = Date.now();
+  updateCard();
+  updateScore();
+  startRecognition();
+}
+
+function updateCard(){
+  if(currentIndex>=randomizedObjects.length){
+    document.getElementById('object-card').textContent='Finished!';
+    document.getElementById('status').textContent='Round complete!';
+    document.getElementById('progress-bar').style.width='100%';
+    reviewSkipped();
+    alert(`Final Score: ${Math.round(score)}`);
+    return;
+  }
+  document.getElementById('object-card').textContent = randomizedObjects[currentIndex];
+  document.getElementById('progress-bar').style.width = `${(currentIndex/randomizedObjects.length)*100}%`;
+}
+
+function isCorrect(spoken, expected){
+  spoken = spoken.toLowerCase();
+  expected = expected.toLowerCase();
+  if(objectAlternatives[expected]){
+    return objectAlternatives[expected].includes(spoken);
+  }
+  return strictMode ? spoken===expected : spoken.includes(expected);
+}
+
+function startRecognition(){
+  if(!('webkitSpeechRecognition' in window)){ alert("Browser does not support speech recognition."); return; }
+  recognition = new webkitSpeechRecognition();
+  recognition.lang="en-US";
+  recognition.interimResults=false;
+  recognition.maxAlternatives=1;
+  recognition.start();
+  document.getElementById('status').textContent="Listening...";
+
+  recognition.onresult=(event)=>{
+    let spoken = event.results[0][0].transcript.trim();
+    const expected = randomizedObjects[currentIndex];
+    if(isCorrect(spoken, expected)){
+      const timeTaken = (Date.now()-startTime)/1000;
+      const speedMultiplier = Math.max(1,10/timeTaken);
+      score += 10*multiplier*speedMultiplier;
+      multiplier++;
+      document.getElementById('status').textContent = `✅ Correct! You said '${spoken}'`;
+      playNextSegment();
+      currentIndex++;
+      startTime=Date.now();
+      updateCard();
+      updateScore();
+      if(currentIndex<randomizedObjects.length) startRecognition();
+    } else {
+      multiplier=1;
+      document.getElementById('status').textContent=`❌ You said '${spoken}'. Multiplier reset.`;
+      startRecognition();
+    }
+  };
+
+  recognition.onerror=(event)=>{ document.getElementById('status').textContent="Error: "+event.error; };
+  recognition.onend=()=>{ if(currentIndex<randomizedObjects.length) recognition.start(); };
+}
+
+function playNextSegment(){
+  if(currentSegment>=segments.length) return;
+  video.currentTime = segments[currentSegment].start;
+  video.playbackRate = 2.0;
+  video.play();
+  const stopHandler = ()=>{
+    if(video.currentTime>=segments[currentSegment].end){
+      video.pause();
+      video.removeEventListener('timeupdate',stopHandler);
+    }
+  };
+  video.addEventListener('timeupdate',stopHandler);
+  currentSegment+=2; // 40 segments for 20 words, advance 2 segments per correct answer
+}
+
+function skipObject(){
+  skipped.push(randomizedObjects[currentIndex]);
+  score-=5;
+  multiplier=1;
+  currentIndex++;
+  updateCard();
+  updateScore();
+}
+
+function reviewSkipped(){
+  if(skipped.length===0) return;
+  document.getElementById('status').textContent='Review skipped items';
+  skipped.forEach(word=>{ const utter=new SpeechSynthesisUtterance(word); window.speechSynthesis.speak(utter); });
+}
+
+function updateScore(){ document.getElementById('scoreboard').textContent=`Score: ${Math.round(score)}`; }
+
+updateCard();
+</script>
+</body>
+</html>
