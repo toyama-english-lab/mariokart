@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Fruit & Animal Voice Game</title>
+  <title>Sight Word Voice Game</title>
   <style>
     body {
       margin: 0;
@@ -65,7 +65,7 @@
   </style>
 </head>
 <body>
-  <h1>Voice Game: Fruits, Vegetables & Animals 🍎🥕🐶</h1>
+  <h1>Sight Word Voice Game 🔤</h1>
 
   <div id="gameContainer">
     <video id="speedrunVideo" src="speedrun.mp4"></video>
@@ -79,17 +79,21 @@
   <button id="skipBtn">Skip ❌</button>
 
   <script>
-    // Word list (problematic words removed)
-    const words = [
-      // Fruits
-      "apple","banana","orange","grape","peach","mango","strawberry","cherry","watermelon",
-      // Vegetables
-      "carrot","potato","tomato","onion","cucumber","pepper","broccoli","corn","pumpkin",
-      // Animals
-      "cat","dog","lion","tiger","elephant","monkey","zebra","giraffe","bear","rabbit"
+    // --- Master list of 100 sight words ---
+    const sightWords = [
+      "a","about","after","all","am","an","and","any","are","as",
+      "at","be","because","been","but","by","can","could","day","do",
+      "did","does","eat","every","for","from","get","go","good","have",
+      "he","her","here","him","his","how","I","if","in","is",
+      "it","its","like","little","long","make","many","me","more","my",
+      "no","not","now","of","on","one","or","our","out","play",
+      "please","put","ran","read","red","run","said","see","she","so",
+      "some","stop","take","that","the","their","them","then","there","they",
+      "this","to","too","two","up","us","was","we","went","what",
+      "when","will","with","yes","you","your"
     ];
 
-    // Shuffle function
+    // --- Shuffle function ---
     function shuffle(array){
       for(let i=array.length-1;i>0;i--){
         const j = Math.floor(Math.random()*(i+1));
@@ -98,7 +102,9 @@
       return array;
     }
 
-    let gameWords = shuffle([...words]).slice(0,10);
+    // --- Pick 50 random words for this game ---
+    let gameWords = shuffle([...sightWords]).slice(0,50);
+
     let currentWordIndex = 0;
     let score = 0;
     const overlay = document.getElementById("overlay");
