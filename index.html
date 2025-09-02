@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Voice Game with Sentences</title>
+<title>Voice Game with Kid-Friendly Sentences</title>
 <style>
   body {
     margin: 0;
@@ -31,6 +31,7 @@
     font-size: 1.8rem;
     display: none;
     text-align: center;
+    transition: color 0.3s;
   }
   #scoreDisplay, #timerDisplay, #speedMultiplier {
     position: absolute;
@@ -43,27 +44,23 @@
   #scoreDisplay { top: 10px; right: 10px; }
   #timerDisplay { top: 10px; left: 10px; }
   #speedMultiplier { top: 35px; right: 10px; }
-  #progressDisplay {
-    margin-top: 5px;
-    font-size: 16px;
-    text-align: center;
-  }
+  #progressDisplay { margin-top: 5px; font-size: 16px; text-align: center; }
   #skipBtn, #micBtn {
     margin-top: 10px;
     padding: 10px 20px;
     font-size: 1rem;
     border: none;
     border-radius: 8px;
-    background: #ff4444;
-    color: white;
     cursor: pointer;
   }
+  #skipBtn { background: #ff4444; color: white; }
   #skipBtn:hover { background: #cc0000; }
-  #micBtn:hover { background: #4444ff; }
+  #micBtn { background: #4444ff; color: white; }
+  #micBtn:hover { background: #0000cc; }
 </style>
 </head>
 <body>
-<h1>Voice Game: Fruits, Vegetables & Animals 🍎🥕🐶</h1>
+<h1>Voice Game: Fun Sentences for Kids</h1>
 
 <div id="gameContainer">
   <video id="speedrunVideo" src="speedrun.mp4"></video>
@@ -84,8 +81,14 @@ const words = [
   "cat","dog","lion","tiger","elephant","monkey","zebra","giraffe","bear","rabbit"
 ];
 
-// Create short sentence prompts
-const sentences = words.map(w => `I see a ${w}`);
+// Generate kid-friendly sentences with more variety
+const sentences = words.map(w => [
+  `I like to eat a ${w}.`,
+  `Can you see the ${w}?`,
+  `The ${w} is very nice.`,
+  `I have a ${w} at home.`,
+  `Look! There is a ${w}.`
+]).flat();
 
 function shuffle(array){
   for(let i=array.length-1;i>0;i--){
@@ -95,7 +98,8 @@ function shuffle(array){
   return array;
 }
 
-let gameWords = shuffle([...sentences]).slice(0,10);
+// Pick 50 random sentences
+let gameWords = shuffle([...sentences]).slice(0,50);
 let currentWordIndex = 0;
 let score = 0;
 
@@ -121,19 +125,21 @@ if('webkitSpeechRecognition' in window){
 
   recognition.onresult = (event)=>{
     const said = event.results[0][0].transcript.toLowerCase().trim();
-    console.log("You said:",said);
-    if(said.includes(gameWords[currentWordIndex].split(' ')[2])){ // check the main word
-      score +=10;
+    const currentSentence = gameWords[currentWordIndex];
+    const mainWord = currentSentence.split(' ')[currentSentence.split(' ').length-1].replace('.','').toLowerCase();
+    if(said.includes(mainWord)){
+      score += 10;
       updateScoreDisplay();
+      overlay.style.color = "lime"; // flash green
+      setTimeout(()=>overlay.style.color = "white", 500);
       nextRound();
     } else {
-      overlay.textContent = "Try again: "+gameWords[currentWordIndex];
-      setTimeout(()=>recognition.start(),500); // restart quickly
+      overlay.textContent = "Try again: "+currentSentence;
+      setTimeout(()=>recognition.start(),500);
     }
   };
 
   recognition.onend = ()=>{
-    // auto-restart
     if(currentWordIndex<gameWords.length) recognition.start();
   };
 }
@@ -170,7 +176,7 @@ function updateScoreDisplay(){ scoreDisplay.textContent=`Score: ${score}`; }
 // --- Show Word ---
 function showWord(){
   const currentSentence = gameWords[currentWordIndex];
-  overlay.textContent=currentSentence;
+  overlay.textContent = currentSentence;
   overlay.style.display="block";
   skipBtn.style.display="inline-block";
   progressDisplay.textContent=`Word ${currentWordIndex+1} of ${gameWords.length}`;
